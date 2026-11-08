@@ -1,7 +1,1858 @@
-<html>
-<body>
 
-  <h1>hello world</h1>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>铁锈沙盒 · RTS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b1015'/%3E%3Ccircle cx='14' cy='19' r='7' fill='%234a9eff'/%3E%3Crect x='14' y='17.2' width='14' height='3.6' rx='1.4' fill='%234a9eff'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0b1015;
+  --panel:rgba(14,21,28,.92);
+  --line:rgba(140,175,205,.20);
+  --txt:#cfdce8;
+  --dim:#7e94a8;
+  --blue:#4a9eff;
+  --red:#ff5d4d;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;}
+
+.bar{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:10px;}
+
+#topbar{top:8px;left:8px;right:8px;padding:7px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;z-index:5;}
+.brand{font-weight:600;letter-spacing:.5px;font-size:14px;}
+.brand .tag{font-size:10px;letter-spacing:1px;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:6px;font-weight:500;}
+.stat{display:flex;align-items:center;gap:5px;color:var(--dim);font-variant-numeric:tabular-nums;}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+.dot.b{background:var(--blue);} .dot.r{background:var(--red);}
+.spacer{flex:1;min-width:6px;}
+.btn{
+  min-height:34px;padding:0 11px;border-radius:7px;border:1px solid var(--line);
+  background:rgba(255,255,255,.045);color:var(--txt);font-size:12.5px;font-family:inherit;
+  cursor:pointer;transition:background .12s,border-color .12s;
+}
+.btn:hover{background:rgba(255,255,255,.09);}
+.btn.on{border-color:rgba(74,158,255,.6);background:rgba(74,158,255,.16);color:#d8ecff;}
+
+#dock{left:8px;right:8px;bottom:8px;padding:8px;display:flex;flex-direction:column;gap:6px;z-index:5;}
+.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.lbl{font-size:11px;letter-spacing:1px;width:34px;flex:0 0 34px;color:var(--dim);}
+.lbl.b{color:#7cbaff;} .lbl.r{color:#ff8d80;}
+.spawn{
+  min-height:42px;min-width:58px;padding:0 10px;border-radius:8px;
+  border:1px solid rgba(74,158,255,.35);background:rgba(74,158,255,.10);color:#d8ecff;
+  font-size:12.5px;font-family:inherit;cursor:pointer;transition:.12s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.1;
+}
+.spawn.rd{border-color:rgba(255,93,77,.35);background:rgba(255,93,77,.10);color:#ffd9d5;}
+.spawn small{font-size:9.5px;color:var(--dim);letter-spacing:.5px;}
+.spawn:hover{filter:brightness(1.18);}
+.spawn.on{border-color:#4a9eff;background:rgba(74,158,255,.28);box-shadow:0 0 0 1px rgba(74,158,255,.4) inset;}
+.spawn.rd.on{border-color:#ff5d4d;background:rgba(255,93,77,.28);box-shadow:0 0 0 1px rgba(255,93,77,.4) inset;}
+.spawn.build{border-color:rgba(255,212,121,.34);background:rgba(255,212,121,.09);color:#ffeec4;}
+.spawn.build.on{border-color:#ffd479;background:rgba(255,212,121,.26);box-shadow:0 0 0 1px rgba(255,212,121,.45) inset;}
+.spawn.poor{opacity:.45;}
+.stat.res{color:#ffd479;font-weight:600;font-size:13.5px;}
+#prodRow{display:none;}
+#prodRow.show{display:flex;}
+.qbox{
+  display:flex;align-items:center;gap:5px;font-size:11.5px;color:#9fb6c8;
+  min-height:28px;flex-wrap:wrap;
+}
+.qcell{
+  width:26px;height:28px;border-radius:5px;border:1px solid rgba(140,175,205,.3);
+  background:rgba(120,160,200,.12);position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#d5e5f3;
+}
+.qcell i{position:absolute;left:0;bottom:0;height:3px;background:#5fc2ff;display:block;}
+#tip{font-size:11.5px;color:var(--dim);line-height:1.5;}
+
+/* 模式选择 / 结算 */
+#modeSel, #endSel{
+  position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,12,17,.96);padding:18px;overflow-y:auto;
+}
+#endSel{display:none;z-index:32;}
+#endSel .msTitle{font-size:22px;letter-spacing:3px;margin-bottom:10px;}
+.msCard{
+  width:min(520px,100%);border:1px solid var(--line);border-radius:14px;
+  background:rgba(16,23,31,.94);padding:22px 18px;text-align:center;
+}
+.msTitle{font-size:19px;letter-spacing:1.5px;font-weight:600;margin-bottom:5px;}
+.msSub{font-size:12.5px;color:var(--dim);margin-bottom:18px;line-height:1.6;}
+.msBtn{
+  display:block;width:100%;text-align:left;padding:13px 15px;margin-bottom:9px;
+  border-radius:10px;border:1px solid rgba(74,158,255,.35);background:rgba(74,158,255,.10);
+  color:#d8ecff;font-family:inherit;cursor:pointer;transition:.15s;
+}
+.msBtn:hover{filter:brightness(1.16);}
+.msBtn.war{border-color:rgba(255,93,77,.38);background:rgba(255,93,77,.10);color:#ffd9d5;}
+.msBtn b{display:block;font-size:14.5px;margin-bottom:3px;font-weight:600;}
+.msBtn span{font-size:11.5px;color:var(--dim);line-height:1.5;display:block;}
+.msNote{font-size:11px;color:#63798c;line-height:1.6;margin-top:10px;}
+
+@media (max-width:560px){
+  #topbar{font-size:12px;gap:6px;padding:6px 8px;}
+  .brand{font-size:13px;} .brand .tag{display:none;}
+  .btn{min-height:32px;padding:0 9px;font-size:12px;}
+  #dock{padding:7px;gap:5px;max-height:44vh;overflow-y:auto;}
+  .spawn{min-height:40px;min-width:50px;font-size:11.5px;padding:0 7px;}
+  .spawn small{display:none;}
+  .lbl{width:28px;flex:0 0 28px;font-size:10px;}
+  #resRStat{display:none;}
+  #tip{display:none;}
+}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div id="modeSel">
+  <div class="msCard">
+    <div class="msTitle">铁锈沙盒</div>
+    <div class="msSub">选择一种玩法开始对局</div>
+    <button class="msBtn war" data-mode="war">
+      <b>战争模式</b>
+      <span>开局双方各只有一座基地，不能直接摆放单位。造建筑、出矿车采矿、按队列生产部队。</span>
+    </button>
+    <button class="msBtn" data-mode="sandbox">
+      <b>沙盒模式</b>
+      <span>自由摆放蓝红双方任意单位，随便试验，不受开局限定。</span>
+    </button>
+    <div class="msNote">对局中可随时点顶部「模式」重新选择</div>
+  </div>
+</div>
+
+<div id="endSel">
+  <div class="msCard">
+    <div class="msTitle" id="endTitle">胜利</div>
+    <div class="msSub" id="endSub">对方所有基地已被摧毁。</div>
+    <button class="msBtn" id="endAgain">
+      <b>再来一局</b>
+      <span>用当前模式重新开局</span>
+    </button>
+    <button class="msBtn" id="endMode">
+      <b>返回模式选择</b>
+      <span>换一种玩法</span>
+    </button>
+  </div>
+</div>
+
+<div id="topbar" class="bar">
+  <div class="brand">铁锈沙盒<span class="tag">SANDBOX</span></div>
+  <div class="stat res"><i class="dot" style="background:#ffd479"></i><span id="resNum">400</span></div>
+  <div class="stat res" id="resRStat" style="color:#ff9a8c"><i class="dot" style="background:#ff9a8c"></i><span id="resNumR">400</span></div>
+  <div class="stat"><i class="dot b"></i><span id="cntB">0</span></div>
+  <div class="stat"><i class="dot r"></i><span id="cntR">0</span></div>
+  <div class="spacer"></div>
+  <button id="btnMode" class="btn">模式</button>
+  <button id="btnSupply" class="btn">补给 +500</button>
+  <button id="btnPause" class="btn">暂停</button>
+  <button id="btnAll" class="btn">全选</button>
+  <button id="btnClear" class="btn">清空</button>
+  <button id="btnAI" class="btn on">敌方AI 开</button>
+</div>
+
+<div id="dock" class="bar">
+  <div class="row">
+    <span class="lbl">建造</span>
+    <button class="spawn build" data-build="barracks">兵营<small>250</small></button>
+    <button class="spawn build" data-build="factory">机库<small>450</small></button>
+    <button class="spawn build" data-build="turret">炮塔<small>180</small></button>
+    <button class="spawn build" data-build="base">基地<small>600</small></button>
+  </div>
+  <div class="row" id="prodRow">
+    <span class="lbl">生产</span>
+    <div id="prodBtns" class="row"></div>
+    <div class="qbox" id="qbox"></div>
+  </div>
+  <div class="row" id="rowBlue">
+    <span class="lbl b">蓝兵</span>
+    <button class="spawn" data-team="0" data-type="inf">步兵<small>40</small></button>
+    <button class="spawn" data-team="0" data-type="tank">坦克<small>110</small></button>
+    <button class="spawn" data-team="0" data-type="arty">火炮<small>140</small></button>
+    <button class="spawn" data-team="0" data-type="air">飞机<small>160</small></button>
+    <button class="spawn" data-team="0" data-type="harvester">矿车<small>90</small></button>
+  </div>
+  <div class="row" id="rowRed">
+    <span class="lbl r">红兵</span>
+    <button class="spawn rd" data-team="1" data-type="inf">步兵<small>免费</small></button>
+    <button class="spawn rd" data-team="1" data-type="tank">坦克<small>免费</small></button>
+    <button class="spawn rd" data-team="1" data-type="arty">火炮<small>免费</small></button>
+    <button class="spawn rd" data-team="1" data-type="air">飞机<small>免费</small></button>
+    <button class="spawn rd" data-team="1" data-type="turret">炮塔<small>免费</small></button>
+  </div>
+  <div id="tip">建造要花资源；选中建筑后可在生产栏下单；矿车会自动往返矿点采资源</div>
+</div>
+
+<script>
+'use strict';
+// ===================== 基础常量 =====================
+const TAU = Math.PI * 2;
+const WORLD = { w: 4600, h: 3400 };
+const MAX_UNITS = 360;
+
+const TYPES = {
+  inf:   { name:'步兵', r:7,  hp:130, speed:82,  range:155, dmg:8,  cd:0.75, bullet:{sp:430, r:2},   flying:false, fixed:false },
+  tank:  { name:'坦克', r:13, hp:640, speed:56,  range:205, dmg:26, cd:1.25, bullet:{sp:520, r:3},   flying:false, fixed:false },
+  arty:  { name:'火炮', r:12, hp:310, speed:30,  range:365, dmg:55, cd:2.6,  bullet:{sp:400, r:4.5}, flying:false, fixed:false },
+  air:   { name:'飞机', r:11, hp:230, speed:155, range:175, dmg:13, cd:0.55, bullet:{sp:610, r:2},   flying:true,  fixed:false },
+  turret:{ name:'炮塔', r:14, hp:1100,speed:0,   range:285, dmg:34, cd:1.0,  bullet:{sp:570, r:3.2}, flying:false, fixed:true  },
+  // ---- 经济与建筑 ----
+  harvester:{ name:'矿车', r:10, hp:380, speed:56, range:0, dmg:0, cd:1, bullet:null, flying:false, fixed:false },
+  base:     { name:'基地', r:24, hp:3200, speed:0, range:0, dmg:0, cd:1, bullet:null, flying:false, fixed:true, building:true },
+  barracks: { name:'兵营', r:19, hp:1700, speed:0, range:0, dmg:0, cd:1, bullet:null, flying:false, fixed:true, building:true },
+  factory:  { name:'机库', r:21, hp:2100, speed:0, range:0, dmg:0, cd:1, bullet:null, flying:false, fixed:true, building:true },
+};
+
+// 单位即时下单价（直接放置 = 沙盒快速生产）
+const COST = { inf:40, tank:110, arty:140, air:160, harvester:90, turret:180 };
+// 建筑建造价
+const BCOST = { barracks:250, factory:450, turret:180, base:600 };
+// 建筑可生产项
+const PRODUCE = {
+  base:     ['inf','harvester'],
+  barracks: ['inf','tank','arty'],
+  factory:  ['air','tank'],
+  turret:   [],
+};
+// 生产耗时（秒）
+const BTIME = { inf:2.4, tank:5.6, arty:7.2, air:8.6, harvester:4.6, turret:6 };
+
+const TEAM_COLOR = ['#4a9eff', '#ff5d4d'];
+const TEAM_COLOR_DIM = ['#2b6da8', '#a83a30'];
+
+// ===================== 画布与相机 =====================
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let vw = 0, vh = 0, dpr = 1;
+const cam = { x: WORLD.w/2, y: WORLD.h/2, z: 0.78 };
+let topbarBottom = 60;
+
+function resize(){
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  vw = cv.clientWidth || window.innerWidth;
+  vh = cv.clientHeight || window.innerHeight;
+  cv.width = Math.round(vw*dpr);
+  cv.height = Math.round(vh*dpr);
+  const tb = document.getElementById('topbar').getBoundingClientRect();
+  topbarBottom = tb.bottom + 8;
+}
+function clampCam(){
+  const hw = vw/2/cam.z, hh = vh/2/cam.z;
+  cam.x = Math.min(Math.max(cam.x, hw*0.5), WORLD.w - hw*0.5);
+  cam.y = Math.min(Math.max(cam.y, hh*0.5), WORLD.h - hh*0.5);
+}
+function screenToWorld(sx, sy){
+  return { x: (sx - vw/2)/cam.z + cam.x, y: (sy - vh/2)/cam.z + cam.y };
+}
+
+// ===================== 游戏状态 =====================
+const units = [];
+const bullets = [];
+const fx = [];
+let nextId = 1;
+let paused = false;
+let aiOn = true;
+let aiTimer = 2;
+let selected = [];
+let mode = null; // { kind:'unit'|'build', type, team }
+const RES = [400, 400];    // 资源：[0]=蓝方 [1]=红方
+let GAME_MODE = 'sandbox'; // 'war' | 'sandbox'
+let started = false;
+let choosingSpawn = false; // 正在选择出生点
+let gameOver = false;
+const hadBase = [false, false]; // 双方是否曾经拥有基地
+let hoverWorld = null;     // 指针所在世界坐标
+
+function isWar(){ return GAME_MODE === 'war'; }
+
+function spawnUnit(typeKey, team, x, y){
+  if (units.length >= MAX_UNITS) return null;
+  const t = TYPES[typeKey];
+  const u = {
+    id: nextId++, type: typeKey, team,
+    x: Math.max(t.r, Math.min(WORLD.w - t.r, x)),
+    y: Math.max(t.r, Math.min(WORLD.h - t.r, y)),
+    r: t.r, hp: t.hp, maxHp: t.hp,
+    speed: t.speed, range: t.range,
+    dmg: t.dmg, cdMax: t.cd, cd: Math.random()*t.cd,
+    flying: t.flying, fixed: t.fixed,
+    building: !!t.building,
+    angle: team === 0 ? -Math.PI/2 : Math.PI/2,
+    dest: null, sel: false, flash: 0, think: 0, target: null,
+    // 经济与生产
+    queue: t.building ? [] : null,
+    rally: null,
+    state: typeKey === 'harvester' ? 'seek' : null,
+    node: null, cargo: 0, mineT: 0
+  };
+  units.push(u);
+  if (typeKey === 'base') hadBase[team] = true;
+  return u;
+}
+
+// 地图装饰（固定随机，用种子保证一致）
+let seed = 20261108;
+function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+const decor = [];
+(function makeDecor(){
+  for (let i = 0; i < 170; i++){
+    decor.push({
+      x: rnd()*WORLD.w, y: rnd()*WORLD.h,
+      r: 10 + rnd()*34,
+      k: Math.floor(rnd()*3),
+      a: rnd()*TAU
+    });
+  }
+})();
+
+// 资源矿点：矿车自动往返采集
+const nodes = [];
+(function makeNodes(){
+  const cx = WORLD.w/2, cy = WORLD.h/2;
+  const spots = [
+    [-620,-360],[-560,240],[-300,-620],[-180,520],[-760,60],
+    [660,-380],[600,270],[320,-640],[260,540],[800,40],
+    [-1080,-520],[-1040,480],[1120,-500],[1080,520]
+  ];
+  for (const s of spots){
+    nodes.push({
+      x: cx + s[0], y: cy + s[1],
+      r: 30, amount: 2400, max: 2400
+    });
+  }
+})();
+
+function nearestNode(x, y, minAmount){
+  let best = null, bd = Infinity;
+  for (const n of nodes){
+    if (n.amount <= (minAmount || 0)) continue;
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d < bd){ bd = d; best = n; }
+  }
+  return best;
+}
+
+function nearestBase(team, x, y){
+  let best = null, bd = Infinity;
+  for (const u of units){
+    if (u.team !== team || u.type !== 'base' || u.hp <= 0) continue;
+    const d = Math.hypot(u.x - x, u.y - y);
+    if (d < bd){ bd = d; best = u; }
+  }
+  return best;
+}
+
+// ===================== 输入处理 =====================
+const pointers = new Map();
+let selRect = null;     // {x0,y0,x1,y1} 屏幕坐标
+let pinchDist = 0;
+
+function localPos(e){
+  const rect = cv.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function minimapRect(){
+  const w = Math.min(120, vw*0.28);
+  const h = w * WORLD.h / WORLD.w;
+  return { x: vw - w - 10, y: topbarBottom + 6, w, h };
+}
+
+function unitAt(wx, wy){
+  let best = null, bd = Infinity;
+  for (const u of units){
+    const d = Math.hypot(u.x - wx, u.y - wy);
+    if (d < u.r + 10 && d < bd){ bd = d; best = u; }
+  }
+  return best;
+}
+
+function clearSelection(){
+  selected.forEach(u => u.sel = false);
+  selected = [];
+}
+
+function selectOnly(u){
+  clearSelection();
+  if (u){ u.sel = true; selected.push(u); }
+  refreshProd();
+}
+
+function selectByRect(){
+  if (!selRect) return;
+  const x0 = Math.min(selRect.x0, selRect.x1), x1 = Math.max(selRect.x0, selRect.x1);
+  const y0 = Math.min(selRect.y0, selRect.y1), y1 = Math.max(selRect.y0, selRect.y1);
+  if (x1 - x0 < 6 && y1 - y0 < 6) return;
+  const a = screenToWorld(x0, y0), b = screenToWorld(x1, y1);
+  clearSelection();
+  for (const u of units){
+    if (u.team !== 0) continue;
+    if (u.x > a.x && u.x < b.x && u.y > a.y && u.y < b.y){
+      u.sel = true; selected.push(u);
+    }
+  }
+  refreshProd();
+}
+
+function commandMove(tx, ty){
+  if (!selected.length) return;
+  const n = selected.length;
+  selected.forEach((u, i) => {
+    const ring = Math.floor(Math.sqrt(i + 1));
+    const ang = i * 2.39996;
+    const rad = ring * (26 + Math.min(n, 12) * 0.4);
+    u.dest = {
+      x: tx + Math.cos(ang) * rad,
+      y: ty + Math.sin(ang) * rad
+    };
+  });
+  fx.push({ x: tx, y: ty, r: 4, life: 0.5, max: 0.5, kind: 'order' });
+}
+
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.spawn').forEach(b => {
+    let on = false;
+    if (m){
+      if (m.kind === 'build') on = b.dataset.build === m.type;
+      else on = b.dataset.type === m.type && b.dataset.team === String(m.team);
+    }
+    b.classList.toggle('on', on);
+  });
+}
+
+function spend(team, n){
+  if (RES[team] < n) return false;
+  RES[team] -= n;
+  return true;
+}
+
+// 沙盒快速放置单位：蓝方扣资源，红方免费
+function placeUnit(type, team, x, y){
+  if (isWar()){
+    tip('战争模式不能直接摆放单位，请用基地 / 兵营 / 机库生产');
+    return false;
+  }
+  const cost = team === 0 ? (COST[type] || 0) : 0;
+  if (cost > 0 && !spend(0, cost)){
+    tip('资源不足：' + TYPES[type].name + ' 需要 ' + cost);
+    return false;
+  }
+  const u = spawnUnit(type, team, x, y);
+  if (!u) { if (cost) RES[0] += cost; return false; }
+  fx.push({ x, y, r: 30, life: 0.35, max: 0.35, kind: 'spawn', team });
+  return true;
+}
+
+// 建造建筑：立即扣对应阵营的资源并落成
+function placeBuilding(type, x, y, team){
+  team = team || 0;
+  const cost = BCOST[type] || 0;
+  if (!spend(team, cost)){
+    if (team === 0) tip('资源不足：' + TYPES[type].name + ' 需要 ' + cost);
+    return false;
+  }
+  const u = spawnUnit(type, team, x, y);
+  if (!u){ RES[team] += cost; return false; }
+  fx.push({ x, y, r: u.r * 2.2, life: 0.5, max: 0.5, kind: 'spawn', team: team });
+  if (team === 0){ tip('已建造 ' + TYPES[type].name); refreshProd(); }
+  return true;
+}
+
+// 加入生产队列（建筑只能生产 PRODUCE 表里限定的单位）
+function enqueue(b, type){
+  if (!b.queue) return;
+  const allowed = PRODUCE[b.type] || [];
+  if (allowed.indexOf(type) === -1) return;
+  if (b.queue.length >= 5){
+    if (b.team === 0) tip('队列已满（上限 5）');
+    return;
+  }
+  const cost = COST[type] || 0;
+  if (!spend(b.team, cost)){
+    if (b.team === 0) tip('资源不足：还差 ' + (cost - RES[0]));
+    return;
+  }
+  b.queue.push({ type: type, t: BTIME[type], total: BTIME[type] });
+  if (b.team === 0) refreshProd();
+}
+
+// 生产完成：在建筑外围生成
+function finishProduce(b, type){
+  const ang = Math.random() * TAU;
+  const rr = b.r + 26;
+  const nu = spawnUnit(type, b.team, b.x + Math.cos(ang) * rr, b.y + Math.sin(ang) * rr);
+  if (!nu) return;
+  if (b.rally) nu.dest = { x: b.rally.x, y: b.rally.y };
+  fx.push({ x: b.x + Math.cos(ang) * rr, y: b.y + Math.sin(ang) * rr, r: 26, life: 0.4, max: 0.4, kind: 'spawn', team: b.team });
+}
+
+function updateProduction(b, dt){
+  if (!b.queue || !b.queue.length) return;
+  const item = b.queue[0];
+  item.t -= dt;
+  if (item.t <= 0){
+    b.queue.shift();
+    finishProduce(b, item.type);
+    if (b.team === 0) refreshProd();
+  }
+}
+
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+cv.addEventListener('pointerdown', e => {
+  const p = localPos(e);
+  pointers.set(e.pointerId, {
+    x: p.x, y: p.y, sx: p.x, sy: p.y,
+    moved: false, type: e.pointerType, button: e.button
+  });
+  try { cv.setPointerCapture(e.pointerId); } catch(_){}
+
+  if (pointers.size === 2){
+    const [a, b] = [...pointers.values()];
+    pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+});
+
+cv.addEventListener('pointermove', e => {
+  const p = localPos(e);
+  hoverWorld = screenToWorld(p.x, p.y);
+  const st = pointers.get(e.pointerId);
+  if (!st) return;
+  const dx = p.x - st.x, dy = p.y - st.y;
+  st.x = p.x; st.y = p.y;
+  if (Math.hypot(p.x - st.sx, p.y - st.sy) > 8) st.moved = true;
+
+  if (pointers.size >= 2){
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchDist > 0 && d > 0){
+      const k = d / pinchDist;
+      cam.z = Math.min(2.4, Math.max(0.3, cam.z * (1 + (k - 1) * 0.9)));
+      clampCam();
+    }
+    pinchDist = d;
+    return;
+  }
+
+  if (!st.moved) return;
+
+  const isMouseLeftSelect = (st.type === 'mouse' && st.button === 0 && !mode && !choosingSpawn);
+  if (isMouseLeftSelect){
+    selRect = { x0: st.sx, y0: st.sy, x1: p.x, y1: p.y };
+  } else {
+    cam.x -= dx / cam.z;
+    cam.y -= dy / cam.z;
+    clampCam();
+  }
+});
+
+cv.addEventListener('pointerup', e => {
+  const st = pointers.get(e.pointerId);
+  pointers.delete(e.pointerId);
+  if (!st) return;
+
+  // 多指仍在屏幕上（捏合缩放中），不触发点击逻辑
+  if (pointers.size > 0){
+    selRect = null;
+    return;
+  }
+
+  if (!st.moved){
+    handleTap(st.x, st.y, st.button);
+  } else if (selRect){
+    selectByRect();
+  }
+  selRect = null;
+  pinchDist = 0;
+});
+
+cv.addEventListener('pointercancel', e => {
+  pointers.delete(e.pointerId);
+  selRect = null;
+});
+
+function handleTap(sx, sy, button){
+  if (gameOver) return;
+
+  // 小地图跳转
+  const mm = minimapRect();
+  if (sx >= mm.x && sx <= mm.x + mm.w && sy >= mm.y && sy <= mm.y + mm.h){
+    cam.x = (sx - mm.x) / mm.w * WORLD.w;
+    cam.y = (sy - mm.y) / mm.h * WORLD.h;
+    clampCam();
+    return;
+  }
+
+  const w = screenToWorld(sx, sy);
+
+  // 战争模式：选择出生点
+  if (choosingSpawn){
+    placeSpawn(w.x, w.y);
+    return;
+  }
+
+  // 右键：优先用于取消放置模式 / 下达移动命令
+  if (button === 2){
+    if (mode){
+      setMode(null);
+      tip('已取消放置');
+      return;
+    }
+    if (selected.length) commandMove(w.x, w.y);
+    return;
+  }
+
+  // 放置模式
+  if (mode){
+    if (mode.kind === 'build') placeBuilding(mode.type, w.x, w.y);
+    else placeUnit(mode.type, mode.team, w.x, w.y);
+    return;
+  }
+
+  const hit = unitAt(w.x, w.y);
+
+  if (hit && hit.team === 0){
+    selectOnly(hit);
+    refreshProd();
+    return;
+  }
+  if (hit && hit.team === 1){
+    // 点敌人 = 让选中的部队去打它
+    if (selected.length) commandMove(hit.x, hit.y);
+    return;
+  }
+  if (selected.length){
+    // 单选一个建筑时，点地面 = 设置集结点
+    if (selected.length === 1 && selected[0].building){
+      selected[0].rally = { x: w.x, y: w.y };
+      fx.push({ x: w.x, y: w.y, r: 6, life: 0.7, max: 0.7, kind: 'order' });
+      tip('集结点已设置，新单位会前往此处');
+      return;
+    }
+    commandMove(w.x, w.y);
+  } else {
+    clearSelection();
+    refreshProd();
+  }
+}
+
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const p = localPos(e);
+  const before = screenToWorld(p.x, p.y);
+  const k = e.deltaY > 0 ? 0.88 : 1.14;
+  cam.z = Math.min(2.4, Math.max(0.3, cam.z * k));
+  const after = screenToWorld(p.x, p.y);
+  cam.x += before.x - after.x;
+  cam.y += before.y - after.y;
+  clampCam();
+}, { passive: false });
+
+// ===================== UI 绑定 =====================
+document.querySelectorAll('.spawn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // 建造按钮
+    const buildType = btn.dataset.build;
+    if (buildType){
+      if (mode && mode.kind === 'build' && mode.type === buildType){
+        setMode(null); tip('已取消建造'); return;
+      }
+      const cost = BCOST[buildType] || 0;
+      if (RES[0] < cost){ tip('资源不足：' + TYPES[buildType].name + ' 需要 ' + cost); return; }
+      setMode({ kind: 'build', type: buildType, team: 0 });
+      tip('点击地图放置「' + TYPES[buildType].name + '」，消耗 ' + cost + ' 资源');
+      return;
+    }
+
+    // 单位按钮
+    const type = btn.dataset.type, team = Number(btn.dataset.team);
+    if (mode && mode.kind === 'unit' && mode.type === type && mode.team === team){
+      setMode(null);
+      tip('已取消放置');
+    } else {
+      setMode({ kind: 'unit', type: type, team: team });
+      const price = team === 0 ? COST[type] : 0;
+      tip('点击地图放置「' + TYPES[type].name + '」' + (price ? '，消耗 ' + price + ' 资源' : ''));
+    }
+  });
+});
+
+// ---- 生产面板 ----
+const prodRow = document.getElementById('prodRow');
+const prodBtns = document.getElementById('prodBtns');
+const qbox = document.getElementById('qbox');
+let prodBuilding = null;
+let prodKey = '';
+
+function buildProdButtons(b){
+  const list = PRODUCE[b.type] || [];
+  const key = b.id + '|' + b.type + '|' + list.join(',');
+  if (key === prodKey) return;
+  prodKey = key;
+  prodBtns.innerHTML = '';
+  if (!list.length){
+    prodBtns.innerHTML = '<span class="qbox">该建筑不生产单位</span>';
+    return;
+  }
+  for (const t of list){
+    const el = document.createElement('button');
+    el.className = 'spawn';
+    el.dataset.prodType = t;
+    el.innerHTML = TYPES[t].name + '<small>' + (COST[t] || 0) + '</small>';
+    el.addEventListener('click', () => enqueue(b, t));
+    prodBtns.appendChild(el);
+  }
+}
+
+function refreshQueue(){
+  if (!prodBuilding || !prodBuilding.queue) return;
+  const q = prodBuilding.queue;
+  if (!q.length){
+    if (qbox.textContent !== '队列空闲') qbox.textContent = '队列空闲';
+    return;
+  }
+  qbox.innerHTML = '';
+  q.forEach((item) => {
+    const cell = document.createElement('div');
+    cell.className = 'qcell';
+    cell.textContent = TYPES[item.type].name.slice(0, 2);
+    const bar = document.createElement('i');
+    bar.style.width = (100 * Math.max(0, 1 - item.t / item.total)) + '%';
+    cell.appendChild(bar);
+    qbox.appendChild(cell);
+  });
+}
+
+function refreshProd(){
+  const b = (selected.length === 1 && selected[0].building && selected[0].team === 0 && selected[0].hp > 0) ? selected[0] : null;
+  prodBuilding = b;
+  if (!b){
+    prodRow.classList.remove('show');
+    prodBtns.innerHTML = '';
+    qbox.innerHTML = '';
+    prodKey = '';
+    return;
+  }
+  prodRow.classList.add('show');
+  buildProdButtons(b);
+  refreshQueue();
+}
+
+document.getElementById('btnSupply').addEventListener('click', () => {
+  RES[0] += 500;
+  tip('补给 +500 资源');
+});
+
+document.getElementById('btnPause').addEventListener('click', e => {
+  paused = !paused;
+  e.currentTarget.textContent = paused ? '继续' : '暂停';
+  e.currentTarget.classList.toggle('on', paused);
+});
+
+document.getElementById('btnAll').addEventListener('click', () => {
+  clearSelection();
+  for (const u of units){ if (u.team === 0){ u.sel = true; selected.push(u); } }
+  tip('已全选蓝方 ' + selected.length + ' 个单位');
+  refreshProd();
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  units.length = 0; bullets.length = 0; fx.length = 0;
+  clearSelection();
+  refreshProd();
+  // 清场后不再判定胜负，避免误触发结算
+  hadBase[0] = false;
+  hadBase[1] = false;
+  tip('战场已清空');
+});
+
+document.getElementById('btnAI').addEventListener('click', e => {
+  aiOn = !aiOn;
+  e.currentTarget.textContent = aiOn ? '敌方AI 开' : '敌方AI 关';
+  e.currentTarget.classList.toggle('on', aiOn);
+});
+
+let tipTimer = 0;
+const tipEl = document.getElementById('tip');
+const tipDefault = '建造要花资源；选中建筑后可在生产栏下单；矿车会自动往返矿点采资源';
+const tipWar = '战争模式：先造矿车采矿，再造兵营 / 机库生产部队；选中建筑可下生产单';
+function tip(msg){
+  tipEl.textContent = msg;
+  tipTimer = 2.6;
+}
+
+// ===================== 战斗逻辑 =====================
+function findTarget(u){
+  let best = null, bd = Infinity;
+  for (const e of units){
+    if (e.team === u.team || e.hp <= 0) continue;
+    const d = Math.hypot(e.x - u.x, e.y - u.y);
+    if (d < bd){ bd = d; best = e; }
+  }
+  return best;
+}
+
+function lerpAngle(a, b, t){
+  let d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+  return a + d * t;
+}
+
+function fire(u, tgt){
+  const b = TYPES[u.type].bullet;
+  const ang = Math.atan2(tgt.y - u.y, tgt.x - u.x) + (Math.random() - 0.5) * 0.06;
+  bullets.push({
+    x: u.x + Math.cos(ang) * (u.r + 5),
+    y: u.y + Math.sin(ang) * (u.r + 5),
+    vx: Math.cos(ang) * b.sp,
+    vy: Math.sin(ang) * b.sp,
+    r: b.r, dmg: u.dmg, team: u.team,
+    life: 1.4, color: TEAM_COLOR[u.team]
+  });
+  fx.push({ x: u.x + Math.cos(ang) * (u.r + 6), y: u.y + Math.sin(ang) * (u.r + 6),
+            r: 7, life: 0.12, max: 0.12, kind: 'muzzle', team: u.team });
+}
+
+function updateUnit(u, dt){
+  // 只有带武器的单位才索敌
+  if (u.range > 0){
+    u.think -= dt;
+    if (u.think <= 0){
+      u.think = 0.2 + Math.random() * 0.12;
+      u.target = findTarget(u);
+    }
+    if (u.target && u.target.hp <= 0) u.target = null;
+  } else {
+    u.target = null;
+  }
+
+  const tgt = u.target;
+  const dist = tgt ? Math.hypot(tgt.x - u.x, tgt.y - u.y) : Infinity;
+  const shooting = tgt && dist <= u.range;
+
+  // 移动：有命令且不在射击距离内时前进
+  if (!u.fixed && u.dest && !shooting){
+    const dx = u.dest.x - u.x, dy = u.dest.y - u.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 5){
+      const sp = u.speed * dt;
+      const step = Math.min(sp, d);
+      u.x += dx / d * step;
+      u.y += dy / d * step;
+    } else {
+      u.dest = null;
+    }
+  }
+
+  // 转向
+  let aim = null;
+  if (tgt) aim = Math.atan2(tgt.y - u.y, tgt.x - u.x);
+  else if (u.dest) aim = Math.atan2(u.dest.y - u.y, u.dest.x - u.x);
+  if (aim !== null) u.angle = lerpAngle(u.angle, aim, 1 - Math.exp(-7 * dt));
+
+  // 开火
+  if (u.cd > 0) u.cd -= dt;
+  if (shooting && u.cd <= 0){
+    u.cd = u.cdMax;
+    fire(u, tgt);
+  }
+
+  if (u.flash > 0) u.flash -= dt;
+}
+
+// 矿车：矿点 <-> 基地 自动往返采集（双方通用）
+function updateHarvester(u, dt){
+  const base = nearestBase(u.team, u.x, u.y);
+
+  if (u.state === 'mine'){
+    u.dest = null;
+    u.mineT -= dt;
+    if (u.node){
+      const cut = Math.min(u.node.amount, 30 * dt);
+      u.node.amount -= cut;
+      u.cargo += cut;
+    }
+    if (u.mineT <= 0 || !u.node || u.node.amount <= 0 || u.cargo >= 70){
+      u.state = base ? 'return' : 'seek';
+      if (base) u.dest = { x: base.x, y: base.y };
+    }
+    return;
+  }
+
+  if (u.state === 'return'){
+    if (!base){ u.state = 'seek'; return; }
+    u.dest = { x: base.x, y: base.y };
+    if (Math.hypot(base.x - u.x, base.y - u.y) < base.r + u.r + 8){
+      if (u.cargo > 0){
+        RES[u.team] += Math.round(u.cargo);
+        fx.push({ x: u.x, y: u.y, r: 20, life: 0.55, max: 0.55, kind: 'spawn', team: u.team });
+        u.cargo = 0;
+      }
+      u.state = 'seek';
+      u.node = null;
+    }
+    return;
+  }
+
+  // seek：找最近的还有矿的矿点
+  if (!u.node || u.node.amount <= 0){
+    u.node = nearestNode(u.x, u.y, 0);
+  }
+  if (!u.node){
+    if (base) u.dest = { x: base.x + (u.id % 3 - 1) * 30, y: base.y + 40 };
+    return;
+  }
+  u.dest = { x: u.node.x, y: u.node.y };
+  if (Math.hypot(u.node.x - u.x, u.node.y - u.y) < u.node.r + u.r + 4){
+    u.state = 'mine';
+    u.mineT = 2.2;
+    u.dest = null;
+  }
+}
+
+function updateBullets(dt){
+  for (let i = bullets.length - 1; i >= 0; i--){
+    const b = bullets[i];
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+
+    let dead = b.life <= 0 || b.x < -50 || b.y < -50 || b.x > WORLD.w + 50 || b.y > WORLD.h + 50;
+
+    if (!dead){
+      for (const u of units){
+        if (u.team === b.team || u.hp <= 0) continue;
+        const d = Math.hypot(u.x - b.x, u.y - b.y);
+        if (d < u.r + b.r + 2){
+          u.hp -= b.dmg;
+          u.flash = 0.18;
+          dead = true;
+          fx.push({ x: b.x, y: b.y, r: 9, life: 0.2, max: 0.2, kind: 'hit', team: b.team });
+          break;
+        }
+      }
+    }
+    if (dead) bullets.splice(i, 1);
+  }
+}
+
+// 单位分离（推挤碰撞）：重叠的双方按可移动性分摊位移
+function separate(){
+  const list = units;
+  for (let iter = 0; iter < 2; iter++){
+    for (let i = 0; i < list.length; i++){
+      const a = list[i];
+      for (let j = i + 1; j < list.length; j++){
+        const b = list[j];
+        if (a.flying || b.flying) continue;
+        if (a.hp <= 0 || b.hp <= 0) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.001;
+        const min = a.r + b.r;
+        if (d >= min) continue;
+
+        const ov = (min - d);
+        const nx = dx / d, ny = dy / d;
+        const aMove = !a.fixed, bMove = !b.fixed;
+
+        if (aMove && bMove){
+          a.x -= nx * ov * 0.5; a.y -= ny * ov * 0.5;
+          b.x += nx * ov * 0.5; b.y += ny * ov * 0.5;
+        } else if (aMove){
+          a.x -= nx * ov; a.y -= ny * ov;
+        } else if (bMove){
+          b.x += nx * ov; b.y += ny * ov;
+        }
+      }
+    }
+  }
+  // 限制在战场内
+  for (const u of list){
+    u.x = Math.max(u.r, Math.min(WORLD.w - u.r, u.x));
+    u.y = Math.max(u.r, Math.min(WORLD.h - u.r, u.y));
+  }
+}
+
+function updateFx(dt){
+  for (let i = fx.length - 1; i >= 0; i--){
+    const f = fx[i];
+    f.life -= dt;
+    if (f.life <= 0) fx.splice(i, 1);
+  }
+}
+
+// ---- AI 辅助查询 ----
+function findBuilding(team, type){
+  for (const u of units){
+    if (u.team === team && u.type === type && u.hp > 0 && u.building) return u;
+  }
+  return null;
+}
+
+function countUnits(team, type){
+  let n = 0;
+  for (const u of units){
+    if (u.team === team && u.type === type && u.hp > 0) n++;
+  }
+  return n;
+}
+
+// 在基地附近找一个不压到已有单位的空位
+function aiBuildSpot(base, rad){
+  for (let i = 0; i < 14; i++){
+    const a = Math.random() * TAU;
+    const d = rad + Math.random() * 70;
+    const x = base.x + Math.cos(a) * d;
+    const y = base.y + Math.sin(a) * d;
+    if (x < 90 || x > WORLD.w - 90 || y < 90 || y > WORLD.h - 90) continue;
+    let ok = true;
+    for (const u of units){
+      if (u.hp <= 0) continue;
+      if (Math.hypot(u.x - x, u.y - y) < u.r + 32){ ok = false; break; }
+    }
+    if (ok) return { x: x, y: y };
+  }
+  return null;
+}
+
+// 战争模式 AI：与玩家同一套规则——矿车采矿、建筑排队列、资源不足就等
+function aiThink(dt){
+  aiTimer -= dt;
+  if (aiTimer > 0) return;
+  aiTimer = 0.85 + Math.random() * 0.55;
+
+  const base = findBuilding(1, 'base');
+  if (!base) return;
+
+  const barracks = findBuilding(1, 'barracks');
+  const factory = findBuilding(1, 'factory');
+
+  // 1) 先把经济立起来：补到 3 台矿车
+  if (countUnits(1, 'harvester') < 3 && RES[1] >= COST.harvester + 30){
+    enqueue(base, 'harvester');
+    return;
+  }
+
+  // 2) 造兵营（陆军生产）
+  if (!barracks && RES[1] >= BCOST.barracks + 80){
+    const spot = aiBuildSpot(base, base.r + 78);
+    if (spot){ placeBuilding('barracks', spot.x, spot.y, 1); return; }
+  }
+
+  // 3) 造机库（空军生产）
+  if (barracks && !factory && RES[1] >= BCOST.factory + 80){
+    const spot = aiBuildSpot(base, base.r + 105);
+    if (spot){ placeBuilding('factory', spot.x, spot.y, 1); return; }
+  }
+
+  // 4) 资源宽裕时补炮塔防守（最多 4 座）
+  if (countUnits(1, 'turret') < 4 && RES[1] >= BCOST.turret + 260){
+    const spot = aiBuildSpot(base, base.r + 130);
+    if (spot){ placeBuilding('turret', spot.x, spot.y, 1); return; }
+  }
+
+  // 5) 生产：只能从对应建筑的限定列表里下单
+  const target = nearestBase(0, base.x, base.y);
+  for (const b of units){
+    if (b.team === 1 && b.building && b.hp > 0){
+      b.rally = target ? { x: target.x, y: target.y } : null;
+    }
+  }
+
+  const ready = units.filter(u =>
+    u.team === 1 && u.building && u.hp > 0 && u.queue && u.queue.length < 2 &&
+    (PRODUCE[u.type] || []).length > 0
+  );
+  if (!ready.length) return;
+
+  const b = ready[Math.floor(Math.random() * ready.length)];
+  const list = PRODUCE[b.type].filter(t => RES[1] >= (COST[t] || 0));
+  if (!list.length) return;
+  enqueue(b, list[Math.floor(Math.random() * list.length)]);
+}
+
+// 敌方 AI
+function aiTick(dt){
+  if (!aiOn || choosingSpawn || gameOver) return;
+
+  // 战争模式：走完整经济与生产流程
+  if (isWar()){
+    aiThink(dt);
+    return;
+  }
+
+  // ---- 沙盒模式：免费、随机位置生成 ----
+  aiTimer -= dt;
+  if (aiTimer > 0) return;
+  aiTimer = 1.5 + Math.random() * 1.6;
+
+  const kinds = ['inf','inf','tank','arty','air'];
+  const k = kinds[Math.floor(Math.random() * kinds.length)];
+
+  const playerUnits = units.filter(u => u.team === 0);
+  const cx = playerUnits.length
+    ? playerUnits.reduce((s,u)=>s+u.x,0)/playerUnits.length
+    : WORLD.w/2;
+  const cy = playerUnits.length
+    ? playerUnits.reduce((s,u)=>s+u.y,0)/playerUnits.length
+    : WORLD.h/2;
+
+  const ang = Math.random() * TAU;
+  const rx = cx + Math.cos(ang) * (900 + Math.random() * 600);
+  const ry = cy + Math.sin(ang) * (900 + Math.random() * 600);
+  const nu = spawnUnit(k, 1, rx, ry);
+  if (nu){
+    nu.dest = { x: cx + (Math.random()-0.5)*260, y: cy + (Math.random()-0.5)*260 };
+  }
+}
+
+function update(dt){
+  if (paused) return;
+  aiTick(dt);
+  for (const u of units){
+    if (u.type === 'harvester') updateHarvester(u, dt);
+    if (u.building) updateProduction(u, dt);
+    updateUnit(u, dt);
+  }
+  updateBullets(dt);
+  separate();
+  updateFx(dt);
+
+  // 清理死亡单位
+  for (let i = units.length - 1; i >= 0; i--){
+    if (units[i].hp <= 0){
+      const dead = units[i];
+      fx.push({ x: dead.x, y: dead.y, r: dead.r * 2.4, life: 0.45, max: 0.45, kind: 'boom', team: dead.team });
+      if (dead.sel){
+        const k = selected.indexOf(dead);
+        if (k >= 0) selected.splice(k, 1);
+      }
+      if (dead.building) refreshProd();
+      units.splice(i, 1);
+    }
+  }
+
+  if (tipTimer > 0){
+    tipTimer -= dt;
+    if (tipTimer <= 0) tipEl.textContent = isWar() ? tipWar : tipDefault;
+  }
+
+  checkVictory();
+}
+
+// ===================== 渲染 =====================
+function drawGround(){
+  const hw = vw/2/cam.z, hh = vh/2/cam.z;
+  const x0 = cam.x - hw, x1 = cam.x + hw, y0 = cam.y - hh, y1 = cam.y + hh;
+
+  ctx.fillStyle = '#0d141b';
+  ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+  // 网格
+  const step = 120;
+  ctx.strokeStyle = 'rgba(120,160,200,.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const gx0 = Math.floor(Math.max(x0, 0)/step)*step;
+  const gx1 = Math.min(x1, WORLD.w);
+  for (let x = gx0; x <= gx1; x += step){
+    ctx.moveTo(x, Math.max(y0, 0));
+    ctx.lineTo(x, Math.min(y1, WORLD.h));
+  }
+  const gy0 = Math.floor(Math.max(y0, 0)/step)*step;
+  const gy1 = Math.min(y1, WORLD.h);
+  for (let y = gy0; y <= gy1; y += step){
+    ctx.moveTo(Math.max(x0, 0), y);
+    ctx.lineTo(Math.min(x1, WORLD.w), y);
+  }
+  ctx.stroke();
+
+  // 装饰地貌
+  for (const d of decor){
+    if (d.x < x0 - 60 || d.x > x1 + 60 || d.y < y0 - 60 || d.y > y1 + 60) continue;
+    ctx.fillStyle = d.k === 0 ? 'rgba(70,110,90,.14)' : d.k === 1 ? 'rgba(90,80,110,.12)' : 'rgba(60,90,120,.14)';
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.r, d.r * 0.72, d.a, 0, TAU);
+    ctx.fill();
+  }
+
+  // 资源矿点
+  for (const n of nodes){
+    if (n.x < x0 - 80 || n.x > x1 + 80 || n.y < y0 - 80 || n.y > y1 + 80) continue;
+    const alive = n.amount > 0;
+    const ratio = Math.max(0, n.amount / n.max);
+
+    ctx.fillStyle = alive ? 'rgba(255,208,110,.13)' : 'rgba(120,126,136,.08)';
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, TAU);
+    ctx.fill();
+
+    ctx.strokeStyle = alive ? 'rgba(255,208,110,.30)' : 'rgba(120,126,136,.20)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, TAU);
+    ctx.stroke();
+
+    // 晶体
+    ctx.fillStyle = alive ? '#ffd479' : '#5d6773';
+    for (let k = 0; k < 5; k++){
+      const a = k * 1.257 + 0.4;
+      const rr = n.r * 0.52;
+      const px = n.x + Math.cos(a) * rr;
+      const py = n.y + Math.sin(a) * rr;
+      ctx.beginPath();
+      ctx.moveTo(px, py - 5);
+      ctx.lineTo(px + 3.6, py + 1);
+      ctx.lineTo(px, py + 6);
+      ctx.lineTo(px - 3.6, py + 1);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 储量弧
+    if (alive){
+      ctx.strokeStyle = 'rgba(255,212,121,.6)';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r + 4, -Math.PI/2, -Math.PI/2 + TAU * ratio);
+      ctx.stroke();
+    }
+  }
+
+  // 战场边界
+  ctx.strokeStyle = 'rgba(120,190,255,.30)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 0, WORLD.w, WORLD.h);
+}
+
+// 建筑专用绘制
+function drawBuilding(u){
+  const col = TEAM_COLOR[u.team];
+  const dim = TEAM_COLOR_DIM[u.team];
+
+  // 阴影 + 地基
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.fillRect(u.x - u.r + 3, u.y - u.r + 4, u.r * 2, u.r * 2);
+  ctx.fillStyle = dim;
+  ctx.fillRect(u.x - u.r, u.y - u.r, u.r * 2, u.r * 2);
+
+  // 内层
+  ctx.fillStyle = col;
+  ctx.fillRect(u.x - u.r * 0.72, u.y - u.r * 0.72, u.r * 1.44, u.r * 1.44);
+
+  // 类型标记
+  ctx.fillStyle = 'rgba(10,16,22,.85)';
+  if (u.type === 'base'){
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r * 0.4, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(225,242,255,.85)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r * 0.52, 0, TAU);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(u.x - u.r * 0.2, u.y);
+    ctx.lineTo(u.x + u.r * 0.2, u.y);
+    ctx.moveTo(u.x, u.y - u.r * 0.2);
+    ctx.lineTo(u.x, u.y + u.r * 0.2);
+    ctx.stroke();
+  } else if (u.type === 'barracks'){
+    ctx.fillRect(u.x - u.r * 0.42, u.y - u.r * 0.26, u.r * 0.84, 2.6);
+    ctx.fillRect(u.x - u.r * 0.42, u.y - 1.3, u.r * 0.84, 2.6);
+    ctx.fillRect(u.x - u.r * 0.42, u.y + u.r * 0.24, u.r * 0.84, 2.6);
+  } else if (u.type === 'factory'){
+    ctx.beginPath();
+    ctx.moveTo(u.x, u.y - u.r * 0.34);
+    ctx.lineTo(u.x + u.r * 0.34, u.y + u.r * 0.24);
+    ctx.lineTo(u.x - u.r * 0.34, u.y + u.r * 0.24);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // 选中
+  if (u.sel){
+    ctx.strokeStyle = 'rgba(150,255,190,.9)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r + 5, 0, TAU);
+    ctx.stroke();
+  }
+
+  // 生产进度环
+  if (u.queue && u.queue.length){
+    const item = u.queue[0];
+    const p = Math.max(0, Math.min(1, 1 - item.t / item.total));
+    ctx.strokeStyle = '#ffd479';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r + 8, -Math.PI/2, -Math.PI/2 + TAU * p);
+    ctx.stroke();
+  }
+
+  // 受击闪光
+  if (u.flash > 0){
+    ctx.fillStyle = 'rgba(255,255,255,' + Math.min(0.5, u.flash * 3) + ')';
+    ctx.fillRect(u.x - u.r, u.y - u.r, u.r * 2, u.r * 2);
+  }
+
+  // 血条
+  const hw = u.r + 3;
+  ctx.fillStyle = 'rgba(0,0,0,.6)';
+  ctx.fillRect(u.x - hw, u.y - u.r - 11, hw * 2, 3.6);
+  ctx.fillStyle = u.team === 0 ? '#5fc2ff' : '#ff8272';
+  ctx.fillRect(u.x - hw, u.y - u.r - 11, hw * 2 * Math.max(0, u.hp / u.maxHp), 3.6);
+}
+
+function drawUnit(u){
+  if (u.building){ drawBuilding(u); return; }
+  const col = TEAM_COLOR[u.team];
+  const dim = TEAM_COLOR_DIM[u.team];
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,.4)';
+  ctx.beginPath();
+  ctx.ellipse(u.x + 2, u.y + 3, u.r * 0.95, u.r * 0.85, 0, 0, TAU);
+  ctx.fill();
+
+  // 飞行单位高度环
+  if (u.flying){
+    ctx.strokeStyle = 'rgba(180,220,255,.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r + 5, 0, TAU);
+    ctx.stroke();
+  }
+
+  // 选中环
+  if (u.sel){
+    ctx.strokeStyle = 'rgba(150,255,190,.9)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r + 4, 0, TAU);
+    ctx.stroke();
+  }
+
+  // 炮管
+  ctx.save();
+  ctx.translate(u.x, u.y);
+  ctx.rotate(u.angle);
+  ctx.fillStyle = dim;
+  const bl = u.type === 'arty' ? u.r * 2.2 : u.type === 'turret' ? u.r * 1.5 : u.r * 1.25;
+  ctx.fillRect(u.r * 0.5, -1.7, bl, 3.4);
+  ctx.restore();
+
+  // 主体
+  if (u.type === 'tank'){
+    ctx.fillStyle = col;
+    ctx.fillRect(u.x - u.r, u.y - u.r * 0.82, u.r * 2, u.r * 1.64);
+    ctx.fillStyle = dim;
+    ctx.fillRect(u.x - u.r * 0.72, u.y - u.r * 0.6, u.r * 1.44, u.r * 1.2);
+  } else if (u.type === 'turret'){
+    ctx.fillStyle = dim;
+    ctx.fillRect(u.x - u.r, u.y - u.r, u.r * 2, u.r * 2);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r * 0.78, 0, TAU);
+    ctx.fill();
+  } else if (u.type === 'air'){
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(u.x + Math.cos(u.angle) * u.r * 1.3, u.y + Math.sin(u.angle) * u.r * 1.3);
+    ctx.lineTo(u.x - Math.cos(u.angle + 1.1) * u.r, u.y - Math.sin(u.angle + 1.1) * u.r);
+    ctx.lineTo(u.x - Math.cos(u.angle - 1.1) * u.r, u.y - Math.sin(u.angle - 1.1) * u.r);
+    ctx.closePath();
+    ctx.fill();
+  } else if (u.type === 'harvester'){
+    // 车身
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r, 0, TAU);
+    ctx.fill();
+    // 货斗：载货越多越亮
+    const full = Math.min(1, u.cargo / 70);
+    ctx.fillStyle = full > 0.06 ? 'rgba(255,212,121,' + (0.35 + full * 0.65) + ')' : 'rgba(18,28,38,.9)';
+    ctx.beginPath();
+    ctx.arc(u.x - Math.cos(u.angle) * u.r * 0.52, u.y - Math.sin(u.angle) * u.r * 0.52, u.r * 0.44, 0, TAU);
+    ctx.fill();
+    if (u.state === 'mine'){
+      ctx.strokeStyle = 'rgba(255,212,121,.75)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(u.x, u.y, u.r + 3.5, 0, TAU);
+      ctx.stroke();
+    }
+  } else {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r, 0, TAU);
+    ctx.fill();
+    if (u.type === 'arty'){
+      ctx.fillStyle = dim;
+      ctx.beginPath();
+      ctx.arc(u.x, u.y, u.r * 0.55, 0, TAU);
+      ctx.fill();
+    }
+  }
+
+  // 受击闪光
+  if (u.flash > 0){
+    ctx.fillStyle = 'rgba(255,255,255,' + Math.min(0.6, u.flash * 3) + ')';
+    ctx.beginPath();
+    ctx.arc(u.x, u.y, u.r, 0, TAU);
+    ctx.fill();
+  }
+
+  // 血条
+  const hw = u.r + 2;
+  const hpw = (u.hp / u.maxHp);
+  ctx.fillStyle = 'rgba(0,0,0,.6)';
+  ctx.fillRect(u.x - hw, u.y - u.r - 9, hw * 2, 3.4);
+  ctx.fillStyle = u.team === 0 ? '#5fc2ff' : '#ff8272';
+  ctx.fillRect(u.x - hw, u.y - u.r - 9, hw * 2 * Math.max(0, hpw), 3.4);
+}
+
+function drawBullets(){
+  for (const b of bullets){
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = b.r * 1.4;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - b.vx * 0.016, b.y - b.vy * 0.016);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawFx(){
+  for (const f of fx){
+    const t = f.life / f.max;
+    if (f.kind === 'muzzle'){
+      ctx.fillStyle = 'rgba(255,225,150,' + t + ')';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * (1 - t) + 2, 0, TAU);
+      ctx.fill();
+    } else if (f.kind === 'hit'){
+      ctx.fillStyle = 'rgba(255,200,120,' + (t * 0.8) + ')';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * (1.4 - t * 0.4), 0, TAU);
+      ctx.fill();
+    } else if (f.kind === 'boom'){
+      ctx.strokeStyle = 'rgba(255,150,90,' + t + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * (1.6 - t), 0, TAU);
+      ctx.stroke();
+    } else if (f.kind === 'spawn'){
+      ctx.strokeStyle = TEAM_COLOR[f.team] + '';
+      ctx.globalAlpha = t;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * (1.2 - t * 0.8), 0, TAU);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (f.kind === 'order'){
+      ctx.strokeStyle = 'rgba(150,255,190,' + t + ')';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r + (1 - t) * 18, 0, TAU);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawSelectionRect(){
+  if (!selRect) return;
+  const x = Math.min(selRect.x0, selRect.x1);
+  const y = Math.min(selRect.y0, selRect.y1);
+  const w = Math.abs(selRect.x1 - selRect.x0);
+  const h = Math.abs(selRect.y1 - selRect.y0);
+  if (w < 3 && h < 3) return;
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = 'rgba(120,255,180,.10)';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = 'rgba(140,255,190,.85)';
+  ctx.lineWidth = 1.4;
+  ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+  ctx.restore();
+}
+
+function drawMinimap(){
+  const mm = minimapRect();
+  if (mm.w < 40) return;
+
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = 'rgba(10,16,22,.88)';
+  ctx.fillRect(mm.x, mm.y, mm.w, mm.h);
+  ctx.strokeStyle = 'rgba(140,175,205,.25)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mm.x + 0.5, mm.y + 0.5, mm.w, mm.h);
+
+  const sx = mm.w / WORLD.w, sy = mm.h / WORLD.h;
+  // 矿点
+  for (const n of nodes){
+    if (n.amount <= 0) continue;
+    ctx.fillStyle = 'rgba(255,212,121,.85)';
+    ctx.fillRect(mm.x + n.x * sx - 1.5, mm.y + n.y * sy - 1.5, 3, 3);
+  }
+  for (const u of units){
+    ctx.fillStyle = TEAM_COLOR[u.team];
+    const px = mm.x + u.x * sx, py = mm.y + u.y * sy;
+    const s = u.building ? 5 : (u.type === 'tank' || u.type === 'turret' ? 3 : 2);
+    ctx.fillRect(px - s/2, py - s/2, s, s);
+  }
+
+  // 视野框
+  ctx.strokeStyle = 'rgba(220,240,255,.55)';
+  const vx = mm.x + (cam.x - vw/2/cam.z) * sx;
+  const vy = mm.y + (cam.y - vh/2/cam.z) * sy;
+  ctx.strokeRect(vx, vy, (vw/cam.z) * sx, (vh/cam.z) * sy);
+  ctx.restore();
+}
+
+function draw(){
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0b1015';
+  ctx.fillRect(0, 0, vw, vh);
+
+  ctx.save();
+  ctx.translate(vw/2, vh/2);
+  ctx.scale(cam.z, cam.z);
+  ctx.translate(-cam.x, -cam.y);
+
+  drawGround();
+
+  // 命令目标线
+  ctx.strokeStyle = 'rgba(150,255,190,.28)';
+  ctx.lineWidth = 1;
+  for (const u of selected){
+    if (!u.dest) continue;
+    ctx.beginPath();
+    ctx.moveTo(u.x, u.y);
+    ctx.lineTo(u.dest.x, u.dest.y);
+    ctx.stroke();
+  }
+
+  // 建筑集结点
+  ctx.save();
+  for (const u of units){
+    if (!u.building || !u.rally) continue;
+    ctx.strokeStyle = u.sel ? 'rgba(255,212,121,.75)' : 'rgba(255,212,121,.16)';
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(u.x, u.y);
+    ctx.lineTo(u.rally.x, u.rally.y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  for (const u of units) drawUnit(u);
+  drawBullets();
+  drawFx();
+
+  // 出生点预览
+  if (choosingSpawn && hoverWorld){
+    const hx = Math.max(80, Math.min(WORLD.w - 80, hoverWorld.x));
+    const hy = Math.max(80, Math.min(WORLD.h - 80, hoverWorld.y));
+    ctx.save();
+    ctx.fillStyle = 'rgba(74,158,255,.20)';
+    ctx.fillRect(hx - 24, hy - 24, 48, 48);
+    ctx.strokeStyle = 'rgba(140,255,190,.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(hx, hy, 42, 0, TAU);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hx - 54, hy); ctx.lineTo(hx + 54, hy);
+    ctx.moveTo(hx, hy - 54); ctx.lineTo(hx, hy + 54);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  drawSelectionRect();
+  drawMinimap();
+  drawSelectionInfo();
+}
+
+function drawSelectionInfo(){
+  if (!selected.length) return;
+  const mm = minimapRect();
+  const txt = '已选中 ' + selected.length + ' 个单位';
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = '12px -apple-system, "PingFang SC", sans-serif';
+  const wTxt = ctx.measureText(txt).width;
+  const x = mm.x + mm.w/2 - wTxt/2 - 8;
+  const y = mm.y + mm.h + 6;
+  ctx.fillStyle = 'rgba(10,16,22,.85)';
+  ctx.fillRect(x, y, wTxt + 16, 22);
+  ctx.strokeStyle = 'rgba(150,255,190,.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, wTxt + 16, 22);
+  ctx.fillStyle = '#c8ffdf';
+  ctx.fillText(txt, x + 8, y + 15);
+  ctx.restore();
+}
+
+// ===================== 主循环 =====================
+let last = performance.now();
+let statTimer = 0;
+const cntBEl = document.getElementById('cntB');
+const cntREl = document.getElementById('cntR');
+const resEl = document.getElementById('resNum');
+const resREl = document.getElementById('resNumR');
+
+function updateAffordance(){
+  document.querySelectorAll('.spawn').forEach(el => {
+    const bt = el.dataset.build;
+    const t = el.dataset.type;
+    const team = el.dataset.team;
+    let cost = 0;
+    if (bt) cost = BCOST[bt] || 0;
+    else if (team === '0') cost = COST[t] || 0;
+    el.classList.toggle('poor', cost > 0 && RES[0] < cost);
+  });
+}
+
+function loop(now){
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.1) dt = 0.1;
+
+  update(dt);
+  draw();
+
+  statTimer -= dt;
+  if (statTimer <= 0){
+    statTimer = 0.3;
+    let b = 0, r = 0;
+    for (const u of units){ if (u.team === 0) b++; else r++; }
+    cntBEl.textContent = b;
+    cntREl.textContent = r;
+    resEl.textContent = Math.floor(RES[0]);
+    resREl.textContent = Math.floor(RES[1]);
+    updateAffordance();
+    refreshQueue();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ===================== 初始化 / 模式 =====================
+function clearField(){
+  units.length = 0;
+  bullets.length = 0;
+  fx.length = 0;
+  clearSelection();
+  setMode(null);
+  prodBuilding = null;
+  prodKey = '';
+  prodRow.classList.remove('show');
+  prodBtns.innerHTML = '';
+  qbox.innerHTML = '';
+  gameOver = false;
+  choosingSpawn = false;
+  hadBase[0] = false;
+  hadBase[1] = false;
+  document.getElementById('endSel').style.display = 'none';
+}
+
+// ---- 胜负判定 ----
+function checkVictory(){
+  if (gameOver || choosingSpawn) return;
+  let pBase = false, eBase = false;
+  for (const u of units){
+    if (u.hp > 0 && u.type === 'base'){
+      if (u.team === 0) pBase = true;
+      else eBase = true;
+    }
+  }
+  if (hadBase[0] && !pBase) endGame(false);
+  else if (hadBase[1] && !eBase) endGame(true);
+}
+
+function endGame(win){
+  gameOver = true;
+  paused = true;
+  const el = document.getElementById('endSel');
+  const t = document.getElementById('endTitle');
+  const s = document.getElementById('endSub');
+  t.textContent = win ? '胜  利' : '基地失守';
+  t.style.color = win ? '#9fffc4' : '#ff9a8c';
+  s.textContent = win
+    ? '敌方所有基地均已被摧毁，战场归你所有。'
+    : '我方基地全部被摧毁，已经无法继续生产。';
+  el.style.display = 'flex';
+}
+
+// 战争模式：先让玩家自由选择出生点
+function chooseSpawnStart(){
+  RES[0] = 400;
+  RES[1] = 400;
+  aiTimer = 2.2;
+  choosingSpawn = true;
+  cam.x = WORLD.w/2;
+  cam.y = WORLD.h/2;
+  cam.z = 0.55;
+  clampCam();
+}
+
+function placeSpawn(x, y){
+  x = Math.max(80, Math.min(WORLD.w - 80, x));
+  y = Math.max(80, Math.min(WORLD.h - 80, y));
+
+  RES[0] = 400;
+  RES[1] = 400;
+  aiTimer = 2.2;
+
+  spawnUnit('base', 0, x, y);
+
+  // 对手以地图中心为对称点出生，双方到中心距离一致
+  let ex = WORLD.w - x;
+  let ey = WORLD.h - y;
+  ex = Math.max(100, Math.min(WORLD.w - 100, ex));
+  ey = Math.max(100, Math.min(WORLD.h - 100, ey));
+
+  if (Math.hypot(ex - x, ey - y) < 1300){
+    const ang = Math.random() * TAU;
+    ex = Math.max(100, Math.min(WORLD.w - 100, x + Math.cos(ang) * 1600));
+    ey = Math.max(100, Math.min(WORLD.h - 100, y + Math.sin(ang) * 1600));
+  }
+
+  spawnUnit('base', 1, ex, ey);
+
+  choosingSpawn = false;
+  cam.x = x;
+  cam.y = y;
+  cam.z = 0.8;
+  clampCam();
+
+  fx.push({ x: x, y: y, r: 60, life: 0.8, max: 0.8, kind: 'spawn', team: 0 });
+  tip('基地已就位：先用基地生产矿车采矿，再造兵营 / 机库');
+  tipTimer = 0;
+}
+
+// 沙盒模式：摆好双方基地设施与开局部队
+function setupSandbox(){
+  const cx = WORLD.w/2, cy = WORLD.h/2;
+  RES[0] = 400;
+  RES[1] = 400;
+  aiTimer = 2;
+
+  spawnUnit('base', 0, cx - 640, cy);
+  spawnUnit('barracks', 0, cx - 560, cy - 150);
+  spawnUnit('factory', 0, cx - 560, cy + 150);
+  spawnUnit('turret', 0, cx - 430, cy);
+  spawnUnit('harvester', 0, cx - 600, cy + 70);
+  spawnUnit('harvester', 0, cx - 600, cy - 70);
+
+  spawnUnit('base', 1, cx + 680, cy);
+  spawnUnit('turret', 1, cx + 560, cy - 130);
+  spawnUnit('turret', 1, cx + 560, cy + 130);
+
+  const bluePos = [
+    ['tank', -160, -40], ['tank', -160, 60], ['inf', -230, -110],
+    ['inf', -230, -60], ['inf', -230, -10], ['inf', -230, 40],
+    ['inf', -230, 90], ['arty', -300, 20], ['air', -90, -170]
+  ];
+  for (const p of bluePos) spawnUnit(p[0], 0, cx + p[1], cy + p[2]);
+
+  const redPos = [
+    ['tank', 180, -50], ['tank', 180, 60], ['inf', 250, -110],
+    ['inf', 250, -55], ['inf', 250, 0], ['inf', 250, 55],
+    ['inf', 250, 110], ['arty', 320, 30], ['air', 110, -180]
+  ];
+  for (const p of redPos){
+    const u = spawnUnit(p[0], 1, cx + p[1], cy + p[2]);
+    if (u) u.dest = { x: cx - 40, y: cy };
+  }
+
+  cam.x = cx; cam.y = cy; cam.z = 0.72;
+  clampCam();
+}
+
+function startGame(mode){
+  GAME_MODE = mode;
+  const war = mode === 'war';
+
+  document.getElementById('modeSel').style.display = 'none';
+
+  const modeBtn = document.getElementById('btnMode');
+  modeBtn.textContent = war ? '战争模式' : '沙盒模式';
+  modeBtn.classList.toggle('on', war);
+
+  // 战争模式不允许直接摆放单位，隐藏两排直摆按钮；补给按钮也关闭
+  document.getElementById('rowBlue').style.display = war ? 'none' : 'flex';
+  document.getElementById('rowRed').style.display = war ? 'none' : 'flex';
+  document.getElementById('btnSupply').style.display = war ? 'none' : '';
+
+  paused = false;
+  const pb = document.getElementById('btnPause');
+  pb.textContent = '暂停';
+  pb.classList.remove('on');
+
+  clearField();
+  if (war) chooseSpawnStart(); else setupSandbox();
+
+  updateAffordance();
+  refreshProd();
+  tipEl.textContent = war ? '点击地图任意位置放置你的基地，作为本局出生点' : tipDefault;
+  tipTimer = 0;
+
+  if (!started){
+    started = true;
+    last = performance.now();
+    requestAnimationFrame(loop);
+  }
+}
+
+// 模式选择界面与切换按钮
+document.querySelectorAll('.msBtn').forEach(b => {
+  b.addEventListener('click', () => startGame(b.dataset.mode));
+});
+
+document.getElementById('btnMode').addEventListener('click', () => {
+  paused = true;
+  const pb = document.getElementById('btnPause');
+  pb.textContent = '继续';
+  pb.classList.add('on');
+  document.getElementById('modeSel').style.display = 'flex';
+});
+
+// 结算面板
+document.getElementById('endAgain').addEventListener('click', () => {
+  startGame(GAME_MODE);
+});
+
+document.getElementById('endMode').addEventListener('click', () => {
+  document.getElementById('endSel').style.display = 'none';
+  document.getElementById('modeSel').style.display = 'flex';
+});
+
+window.addEventListener('resize', () => { resize(); clampCam(); });
+
+resize();
+cam.x = WORLD.w/2;
+cam.y = WORLD.h/2;
+clampCam();
+draw();
+</script>
 </body>
-  
 </html>
