@@ -150,6 +150,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
   <div class="stat"><i class="dot b"></i><span id="cntB">0</span></div>
   <div class="stat"><i class="dot r"></i><span id="cntR">0</span></div>
   <div class="spacer"></div>
+  <button class="btn" id="quitScreen">退出全屏</button>
   <button id="btnMode" class="btn">模式</button>
   <button id="btnSupply" class="btn">补给 +500</button>
   <button id="btnPause" class="btn">暂停</button>
@@ -192,6 +193,24 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
 
 <script>
 'use strict';
+let checkScreen = false
+document.querySelector("#quitScreen").addEventListener("click", function() {
+                        
+                         if(checkScreen)
+                        {
+                           checkScreen = false
+                           document.documentElement.requestFullscreen();
+                           document.querySelector("#quitScreen").innerHTML="退出全屏"
+                        }
+                         else
+                        {
+                         checkScreen = true
+                         document.exitFullscreen();
+                         document.querySelector("#quitScreen").innerHTML="进入全屏"
+                        }
+
+});
+
 // ===================== 基础常量 =====================
 const TAU = Math.PI * 2;
 const WORLD = { w: 4600, h: 3400 };
@@ -1789,7 +1808,8 @@ function setupSandbox(){
 }
 
 function startGame(mode){
-  document.documentElement.requestFullscreen();
+document.documentElement.requestFullscreen();
+checkScreen = false
   GAME_MODE = mode;
   const war = mode === 'war';
 
