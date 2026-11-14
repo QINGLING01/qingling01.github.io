@@ -1789,6 +1789,7 @@ function setupSandbox(){
 }
 
 function startGame(mode){
+  document.documentElement.requestFullscreen();
   GAME_MODE = mode;
   const war = mode === 'war';
 
